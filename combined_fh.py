@@ -83,7 +83,7 @@ def categorize_rank(rank):
     cockpit_ranks = ['CPT', 'FO', 'CPT/FO']
     return 'COCKPIT' if rank_upper in cockpit_ranks else 'CABIN'
 
-def determine_productivity_status_monthly(row):
+def determine_productivity_status_yearly(row):
     """Determine productivity status for monthly"""
     flight_hours = row['Flight Hours (Float)']
     upper_limit = row['UPPER LIMIT (105%*AVG)']
@@ -96,7 +96,7 @@ def determine_productivity_status_monthly(row):
     else:
         return 'PROD'
 
-def process_monthly_data(standardized_df, year_flight_hours_df):
+def process_yearly_data(standardized_df, year_flight_hours_df):
     """Process data for monthly analysis"""
     with st.spinner('🔄 Processing monthly data...'):
         # Step 1: Create crew mapping
@@ -136,7 +136,7 @@ def process_monthly_data(standardized_df, year_flight_hours_df):
         
         # Step 8: Determine productivity status
         year_flight_hours_df['PRODUCTIVITY STATUS'] = year_flight_hours_df.apply(
-            determine_productivity_status_monthly,
+            determine_productivity_status_yearly,
             axis=1
         )
         
@@ -158,7 +158,7 @@ def process_monthly_data(standardized_df, year_flight_hours_df):
         
         return year_flight_hours_df
 
-def create_monthly_distribution_report(year_flight_hours_df):
+def create_yearly_distribution_report(year_flight_hours_df):
     """Create distribution report for monthly"""
     ready_crew_df = year_flight_hours_df[year_flight_hours_df['Crew Status'] == 'Ready Crew'].copy()
     all_periods = sorted(ready_crew_df['PERIOD (UTC TIME)'].unique())
@@ -356,8 +356,8 @@ def standardize_flight_hours(flight_hour_df, crew_analysis):
     
     return df
 
-def determine_productivity_status_consecutive(row, upper_threshold, lower_threshold):
-    """Determine productivity status for 12 consecutive months"""
+def determine_productivity_status_monthly(row, upper_threshold, lower_threshold):
+    """Determine productivity status for monthly"""
     flight_hours = row['Flight Hours (Float)']
     avg_monthly = row['AVG MONTHLY']
     upper_limit = avg_monthly * (upper_threshold / 100)
@@ -370,8 +370,8 @@ def determine_productivity_status_consecutive(row, upper_threshold, lower_thresh
     else:
         return 'PROD'
 
-def create_consecutive_productivity_report(standardized_df):
-    """Create productivity report for 12 consecutive months"""
+def create_monthly_productivity_report(standardized_df):
+    """Create productivity report for monthly"""
     ready_crew_df = standardized_df[standardized_df['Crew Status'] == 'Ready Crew'].copy()
     all_periods = sorted(ready_crew_df['Period'].unique())
     
@@ -471,12 +471,12 @@ def new_render_consecutive_analysis():
             standardized_df = pd.read_excel(file1, sheet_name='Standardized_Company')
             year_flight_hours_df = pd.read_excel(file2, header=1)
             
-            processed_df = process_monthly_data(standardized_df, year_flight_hours_df)
-            report_df = create_monthly_distribution_report(processed_df)
+            processed_df = process_yearly_data(standardized_df, year_flight_hours_df)
+            report_df = create_yearly_distribution_report(processed_df)
             
-            st.session_state['monthly_processed_df'] = processed_df
-            st.session_state['monthly_report_df'] = report_df
-            st.session_state['monthly_processed'] = True
+            st.session_state['yearly_processed_df'] = processed_df
+            st.session_state['yearly_report_df'] = report_df
+            st.session_state['yearly_processed'] = True
             
             st.success("✅ Consecutive data processed successfully!")
             st.rerun()
@@ -485,9 +485,9 @@ def new_render_consecutive_analysis():
             st.exception(e)
     
     # Display Results
-    if 'monthly_processed' in st.session_state and st.session_state['monthly_processed']:
-        df = st.session_state['monthly_processed_df']
-        report_df = st.session_state['monthly_report_df']
+    if 'yearly_processed' in st.session_state and st.session_state['yearly_processed']:
+        df = st.session_state['yearly_processed_df']
+        report_df = st.session_state['yearly_report_df']
         
         st.markdown("---")
         
@@ -595,11 +595,11 @@ def new_render_consecutive_analysis():
         
         col1, col2, col3 = st.columns([2, 1, 1])
         with col1:
-            search_term = st.text_input("🔍 Search by Name or ID", "", key='monthly_search')
+            search_term = st.text_input("🔍 Search by Name or ID", "", key='yearly_search')
         with col2:
-            company_filter = st.selectbox("Filter by Company", ['ALL'] + list(df['COMPANY'].unique()), key='monthly_company')
+            company_filter = st.selectbox("Filter by Company", ['ALL'] + list(df['COMPANY'].unique()), key='yearly_company')
         with col3:
-            rank_filter = st.selectbox("Filter by Rank", ['ALL'] + list(df['Actual Rank'].unique()), key='monthly_rank')
+            rank_filter = st.selectbox("Filter by Rank", ['ALL'] + list(df['Actual Rank'].unique()), key='yearly_rank')
         
         # Apply filters
         filtered_df = df.copy()
@@ -747,7 +747,7 @@ def new_render_monthly_analysis_part1():
                 
                 # Determine productivity status
                 standardized_df['PRODUCTIVITY STATUS'] = standardized_df.apply(
-                    lambda row: determine_productivity_status_consecutive(row, upper_threshold, lower_threshold),
+                    lambda row: determine_productivity_status_monthly(row, upper_threshold, lower_threshold),
                     axis=1
                 )
                 
@@ -773,20 +773,20 @@ def new_render_monthly_analysis_part1():
                 crew_analysis_df.reset_index(inplace=True)
                 
                 # Create productivity report
-                report_df = create_consecutive_productivity_report(standardized_df)
+                report_df = create_monthly_productivity_report(standardized_df)
                 
                 # Calculate changes
                 changes = (standardized_df['Company'] != standardized_df['Company_Original']).sum()
                 
                 # Store in session state
-                st.session_state['consecutive_standardized_df_raw'] = standardized_df_raw
-                st.session_state['consecutive_standardized_df'] = standardized_df
-                st.session_state['consecutive_crew_analysis_df'] = crew_analysis_df
-                st.session_state['consecutive_report_df'] = report_df
-                st.session_state['consecutive_double_company_crews'] = double_company_crews
-                st.session_state['consecutive_changes'] = changes
-                st.session_state['consecutive_crew_analysis'] = crew_analysis
-                st.session_state['consecutive_processed'] = True
+                st.session_state['monthly_standardized_df_raw'] = standardized_df_raw
+                st.session_state['monthly_standardized_df'] = standardized_df
+                st.session_state['monthly_crew_analysis_df'] = crew_analysis_df
+                st.session_state['monthly_report_df'] = report_df
+                st.session_state['monthly_double_company_crews'] = double_company_crews
+                st.session_state['monthly_changes'] = changes
+                st.session_state['monthly_crew_analysis'] = crew_analysis
+                st.session_state['monthly_processed'] = True
                 
                 st.success("✅ Monthly data processed successfully!")
                 st.rerun()
@@ -803,15 +803,15 @@ def new_render_monthly_analysis_part1():
 def new_render_monthly_analysis_part2():
     """Render MONTHLY Analysis Results - Part 2"""
     
-    if 'consecutive_processed' in st.session_state and st.session_state['consecutive_processed']:
+    if 'monthly_processed' in st.session_state and st.session_state['monthly_processed']:
         
-        standardized_df = st.session_state['consecutive_standardized_df']
-        standardized_df_raw = st.session_state['consecutive_standardized_df_raw']
-        crew_analysis_df = st.session_state['consecutive_crew_analysis_df']
-        report_df = st.session_state['consecutive_report_df']
-        double_company_crews = st.session_state['consecutive_double_company_crews']
-        changes = st.session_state['consecutive_changes']
-        crew_analysis = st.session_state['consecutive_crew_analysis']
+        standardized_df = st.session_state['monthly_standardized_df']
+        standardized_df_raw = st.session_state['monthly_standardized_df_raw']
+        crew_analysis_df = st.session_state['monthly_crew_analysis_df']
+        report_df = st.session_state['monthly_report_df']
+        double_company_crews = st.session_state['monthly_double_company_crews']
+        changes = st.session_state['monthly_changes']
+        crew_analysis = st.session_state['monthly_crew_analysis']
         
         st.markdown("---")
         
